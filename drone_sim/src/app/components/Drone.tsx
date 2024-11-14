@@ -2,12 +2,14 @@
 
 import * as THREE from 'three';
 import { useEffect, useRef } from 'react';
+import { testBackend } from '../utils/api';
 
 interface DroneProps {
   scene: THREE.Scene;
+  startPosition: [number, number, number]; // Accept start position as a prop
 }
 
-const Drone = ({ scene }: DroneProps) => {
+const Drone = ({ scene, startPosition }: DroneProps) => {
   const droneRef = useRef<THREE.Mesh | null>(null);
   const speed = 1; // Movement speed
   const rotationSpeed = 0.02; // Rotation speed
@@ -22,6 +24,7 @@ const Drone = ({ scene }: DroneProps) => {
     a: false,
     s: false,
     d: false,
+    t: false,
   };
 
   useEffect(() => {
@@ -30,8 +33,8 @@ const Drone = ({ scene }: DroneProps) => {
     const droneMaterial = new THREE.MeshStandardMaterial({ color: 0x0000ff }); // Blue color for the drone
     const droneMesh = new THREE.Mesh(droneGeometry, droneMaterial);
 
-    // Set the initial position and rotation
-    droneMesh.position.set(0, 20, 0); // Starting position
+    // Set the initial position based on startPosition prop
+    droneMesh.position.set(...startPosition); // Spread the startPosition array
     droneMesh.rotation.set(0, 0, 0); // Starting rotation
 
     // Add the drone to the scene
@@ -56,7 +59,7 @@ const Drone = ({ scene }: DroneProps) => {
     window.addEventListener('keyup', handleKeyUp);
 
     // Animate drone movement
-    const animateDrone = () => {
+    const animateDrone = async () => {
       if (!droneRef.current) return;
 
       const position = droneRef.current.position;
@@ -90,6 +93,13 @@ const Drone = ({ scene }: DroneProps) => {
         position.z -= speed * Math.sin(rotation.y); // Strafe right
       }
 
+      // Test backend connection when "T" is pressed
+      if (keyState.t) {
+        console.log('Testing backend...');
+        const res = await testBackend();
+        console.log(res);
+      }
+
       requestAnimationFrame(animateDrone); // Continue the animation loop
     };
 
@@ -101,7 +111,7 @@ const Drone = ({ scene }: DroneProps) => {
       window.removeEventListener('keyup', handleKeyUp);
       if (droneRef.current) scene.remove(droneRef.current); // Remove the drone on cleanup
     };
-  }, [scene]);
+  }, [scene, startPosition]); // Re-run effect if scene or startPosition changes
 
   return null; // The drone is part of the 3D scene, not rendered as JSX
 };
