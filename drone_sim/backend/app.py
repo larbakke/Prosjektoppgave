@@ -1,50 +1,99 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-from db import db
-from models import SimulationResult
+from flask_sqlalchemy import SQLAlchemy
+from db import initialize_database, get_simulation_full_details
 
 app = Flask(__name__)
 CORS(app)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db'
+
+# Database configuration
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///simulation.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Initialize the database
-db.init_app(app)
+db = SQLAlchemy(app)
 
 @app.route('/api/simulations', methods=['GET'])
 def get_simulations():
-    """Fetch all simulation results."""
-    results = SimulationResult.query.all()
-    return jsonify([result.to_dict() for result in results])
+    """
+    Fetch all simulation metadata (ID and description).
+    """
+    try:
+        conn = db.engine.connect()
+        simulations = conn.execute("SELECT id, description FROM simulations").fetchall()
+        return jsonify([{"id": sim[0], "description": sim[1]} for sim in simulations]), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/simulations/<int:simulation_id>', methods=['GET'])
+def get_simulation_details(simulation_id):
+    """
+    Fetch full details of a specific simulation, including slope, antenna, path, and measurements.
+    """
+    try:
+        simulation_data = get_simulation_full_details(simulation_id)
+        if "error" in simulation_data:
+            return jsonify(simulation_data), 404
+        return jsonify(simulation_data), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/api/simulate', methods=['POST'])
 def simulate():
-    """Simulate drone and store results."""
-    data = request.json
-    start_position = data.get('start_position')
-    antenna_center = data.get('antenna_center')
+    """
+    Simulate a drone and store the results.
+    Expects:
+    {
+        "description": "Simulation description",
+        "start_position": {...},
+        "antenna_center": {...},
+        "steps": 10
+    }
+    """
+    try:
+        data = request.json
+        description = data.get('description')
+        start_position = data.get('start_position')
+        antenna_center = data.get('antenna_center')
+        steps = data.get('steps', 10)
 
-    final_position = antenna_center  # Simplistic placeholder logic
-    steps = 10  # Placeholder for the number of steps
+        if not description or not start_position or not antenna_center:
+            return jsonify({"error": "Missing required fields"}), 400
 
-    result = SimulationResult(
-        start_position=start_position,
-        antenna_center=antenna_center,
-        final_position=final_position,
-        steps=steps
-    )
-    db.session.add(result)
-    db.session.commit()
+        conn = db.engine.connect()
+        conn.execute("""
+            INSERT INTO simulations (description) VALUES (?)
+        """, (description,))
+        simulation_id = conn.execute("SELECT last_insert_rowid()").scalar()
 
-    return jsonify(result.to_dict()), 201
+        conn.execute("""
+            INSERT INTO simulation_results (simulation_id, start_position, antenna_center, final_position, steps)
+            VALUES (?, ?, ?, ?, ?)
+        """, (
+            simulation_id,
+            str(start_position),
+            str(antenna_center),
+            str(antenna_center),  # Simplistic final position placeholder
+            steps
+        ))
+        conn.close()
+
+        return jsonify({"message": "Simulation created", "simulation_id": simulation_id}), 201
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/api/test', methods=['GET'])
 def test():
-    return jsonify({'message': 'Hello, World!'})
+    """
+    Test API endpoint.
+    """
+    return jsonify({'message': 'Hello, World!'}), 200
 
 @app.route('/api/config', methods=['GET'])
 def get_scene_config():
-    """Returns the configuration for the 3D scene."""
+    """
+    Returns the configuration for the 3D scene.
+    """
     return jsonify({
         "camera": {
             "position": [0, 100, 300],
@@ -71,13 +120,9 @@ def get_scene_config():
         "beacon": {
             "depth": 1
         }
-    })
-
+    }), 200
 
 if __name__ == '__main__':
     with app.app_context():
-        db.create_all()
+        initialize_database()  # Ensures tables are created
     app.run(debug=True)
-
-
-

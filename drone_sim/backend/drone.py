@@ -58,10 +58,11 @@ class Drone:
 
         # Check if the new position violates slope constraints
         if new_position.y < 0 or not self.slope.is_above(new_position):
-            print(f"Invalid move! Drone cannot go beneath or through the slope. Current Position: {self._position}")
+            print(f"Invalid move! Drone cannot go beneath or through the slope. Current Position: {self._position}, tried to move to {new_position}")
+            raise ValueError("Invalid move! Drone cannot go beneath or through the slope.")
         else:
             self._position = new_position
-            print(f"Drone moved t0 ", self._position)
+            print(f"Drone moved t0 ", self._position, " at time ", dt + self._positionHist[-1][1], "values: ", dx, dy, dz, dpitch, dyaw, droll)
             self._positionHist.append((self._position, dt + self._positionHist[-1][1]))
 
     @property
@@ -127,16 +128,16 @@ class Drone:
         # Calculate the rotational displacement
         rot_displacement = rot_direction * rot_move_distance
         
-        # Move the drone
+        # Move the drone'
         self.move(displacement[0], displacement[1], displacement[2], rot_displacement[0], rot_displacement[1], rot_displacement[2], dt)
-
+        
 
     def measureSignal(self) -> bool:
         """Return True if signal is detected. The detection will be addedd to the measurements list."""
         transmitter = self.slope.transmittAntenna
         signal_strength, signal_direction = transmitter.read_signal(self.position, self.antenna_range)
         if signal_strength is not None:
-            measurement = Measurement(self.position, signal_strength, signal_direction, timestamp=0)
+            measurement = Measurement(self.position, signal_strength, signal_direction, timestamp=self.positionHist[-1][1])
             self._measurements.append(measurement)
             return True
         return False
@@ -148,7 +149,13 @@ class Drone:
     def followPath(self, d_time: float = 0.1):
         '''Follow the calculated path'''
         while not self.path.isComplete():
-            self.flyTowards(self.path.getNext(), d_time)
+            try:
+                self.flyTowards(self.path.getNext(), d_time)
+            except ValueError:
+                print("Drone cannot move to the next position. The Path is cancelled.")
+                return False
+            if self.position.is_close(self.path.getNext()):
+                self.path.completeStep()
             self.measureSignal()
                 
         #finish the path
