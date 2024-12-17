@@ -9,6 +9,7 @@ drone_sim is a very basic environment built on a a Next.js framwork with TypeScr
 make sure to have node, npm and python installed. 
 
 run the backend:
+
     head into the backend:
     cd drone_sim/backend
 
