@@ -22,5 +22,6 @@ run the backend:
     python ./app.py
 
 run the headder on localhost (might be required to run from terminal as admin):
+
     npm install
     npm run dev
