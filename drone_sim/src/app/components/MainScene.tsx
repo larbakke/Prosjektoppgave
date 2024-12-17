@@ -2,38 +2,15 @@
 
 import { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
+import { fetchSimulationById } from '../utils/api';
+import { SimulationDetails, SceneConfig } from '../utils/interfaces';
+import { runSimulation } from '../utils/simulate';
 import CameraControls from './CameraControls';
 import Slope from './Slope';
 import Drone from './Drone';
 import AvalancheBeacon from './AvalancheBeacon';
+import SimulationControls from './SimulationControls';
 
-interface SceneConfig {
-  camera: {
-    position: [number, number, number];
-    lookAt: [number, number, number];
-  };
-  slope: {
-    width: number;
-    height: number;
-    angle: number;
-    color: number;
-  };
-  light: {
-    position: [number, number, number];
-    color: number;
-    intensity: number;
-  };
-  ground: {
-    size: number;
-    color: number;
-  };
-  drone: {
-    startPosition: [number, number, number];
-  };
-  beacon: {
-    depth: number;
-  };
-}
 
 const MainScene = () => {
   const mountRef = useRef<HTMLDivElement>(null);
@@ -41,6 +18,8 @@ const MainScene = () => {
   const [renderer, setRenderer] = useState<THREE.WebGLRenderer | null>(null);
   const [scene] = useState(new THREE.Scene());
   const [config, setConfig] = useState<SceneConfig | null>(null);
+  const droneRef = useRef<THREE.Mesh | null>(null);
+
 
   useEffect(() => {
     // Fetch configuration from backend
@@ -99,15 +78,37 @@ const MainScene = () => {
     };
   }, [config, scene]);
 
+  const handlePlaySimulation = async (simulationId: number) => {
+    try {
+      const simulationData = await fetchSimulationById(simulationId) as SimulationDetails;
+            
+      const newConfig = {
+        ...config,
+        drone: { 
+          startPosition: [
+            simulationData.drone_path[0]?.position.x,
+            simulationData.drone_path[0]?.position.y, 
+            simulationData.drone_path[0]?.position.z
+          ] 
+        },
+      };
+      setConfig(newConfig);
+      runSimulation(simulationData, droneRef);
+    } catch (error) {
+      console.error('Failed to fetch simulation data:', error);
+    }
+  };
+
   if (!config) return <div>Loading...</div>; // Show a loading indicator while fetching config
 
   return (
     <div ref={mountRef} style={{ width: '100vw', height: '100vh' }}>
+      <SimulationControls onPlay={handlePlaySimulation} />
       {camera && renderer && (
         <>
           <CameraControls camera={camera} renderer={renderer} />
           <Slope {...config.slope} scene={scene} />
-          <Drone scene={scene} startPosition={config.drone.startPosition} />
+          <Drone scene={scene} startPosition={config.drone.startPosition} ref={droneRef} />
           <AvalancheBeacon scene={scene} depth={config.beacon.depth} />
         </>
       )}

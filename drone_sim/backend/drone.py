@@ -57,13 +57,13 @@ class Drone:
         
 
         # Check if the new position violates slope constraints
-        if new_position.y < 0 or not self.slope.is_above(new_position):
-            print(f"Invalid move! Drone cannot go beneath or through the slope. Current Position: {self._position}, tried to move to {new_position}")
-            raise ValueError("Invalid move! Drone cannot go beneath or through the slope.")
-        else:
-            self._position = new_position
-            print(f"Drone moved t0 ", self._position, " at time ", dt + self._positionHist[-1][1], "values: ", dx, dy, dz, dpitch, dyaw, droll)
-            self._positionHist.append((self._position, dt + self._positionHist[-1][1]))
+        # if new_position.y < 0 or not self.slope.is_above(new_position):
+        #     print(f"Invalid move! Drone cannot go beneath or through the slope. Current Position: {self._position}, tried to move to {new_position}")
+        #     raise ValueError("Invalid move! Drone cannot go beneath or through the slope.")
+        # else:
+        self._position = new_position
+        print(f"Drone moved t0 ", self._position, " at time ", dt + self._positionHist[-1][1], "values: ", dx, dy, dz, dpitch, dyaw, droll)
+        self._positionHist.append((self._position, dt + self._positionHist[-1][1]))
 
     @property
     def position(self) -> Position:

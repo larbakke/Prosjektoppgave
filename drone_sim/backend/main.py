@@ -26,14 +26,14 @@ def run_simulation():
 
 
     # Step 3: Create a new simulation entry
-    simulation_description = "Simulation of drone movement on a 35-degree slope."
+    simulation_description = "First ZigZag."
     antenna_id = add_transmitt_antenna(transmittAntenna)
     slope_id = add_slope(slope, antenna_id)
     simulation_id = create_simulation(simulation_description, slope_id, antenna_id)
     print(f"Created simulation with ID: {simulation_id}")
 
     #Initialize drone
-    start_position = Position(0, 0, 5, 0, 0, 0)
+    start_position = Position(-40, 10, 170, 0, 0, 0)
     drone = Drone(
         start_position=start_position,
         speed_limit=10.0,
@@ -46,10 +46,23 @@ def run_simulation():
     # Step 4: Simulate drone movements
     # Create a path for the drone to follow
     path_positions = [
-        Position(0, 0, 10, 0, 0, 0),
-        Position(0, 0, 20, 0, 15, 0),
-        Position(20, 0, 10, 0, 30, 0),
-        Position(30, 10, 10, 0, 45, 0),
+        Position(-40, 10, 170, 0, 0, 0),
+        Position(-40, 23, 140, 0, 0, 0),
+        Position(40, 23, 140, 0, 0, 0),
+        Position(40, 37, 128, 0, 0, 0),
+        Position(-40, 37, 128, 0, 0, 0),
+        Position(-40, 50, 110, 0, 0, 0),
+        Position(40, 50, 110, 0, 0, 0),
+        Position(40, 63, 90, 0, 0, 0),
+        Position(-40, 63, 90, 0, 0, 0),
+        Position(-40, 76, 70, 0, 0, 0),
+        Position(40, 76, 70, 0, 0, 0),
+        Position(40, 89, 50, 0, 0, 0),
+        Position(-40, 89, 50, 0, 0, 0),
+        Position(-40, 102, 30, 0, 0, 0),
+        Position(40, 102, 30, 0, 0, 0),
+        Position(40, 115, 10, 0, 0, 0),
+        Position(-40, 115, 10, 0, 0, 0),
     ]
     path = PreDefPath(path_positions)
     drone.addPath(path)

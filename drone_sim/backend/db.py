@@ -461,3 +461,22 @@ def get_simulation_full_details(simulation_id: int) -> dict:
         "drone_measurements": drone_measurements,
         "result": result
     }
+
+
+def fetch_simulation_ids_and_descriptions():
+    """
+    Fetch all simulation IDs along with their descriptions.
+    :return: List of dictionaries with 'id' and 'description' for each simulation.
+    """
+    conn = sqlite3.connect(DATABASE_FILE)
+    cursor = conn.cursor()
+
+    try:
+        cursor.execute("SELECT id, description FROM simulations")
+        simulations = cursor.fetchall()
+        return [{"id": row[0], "description": row[1]} for row in simulations]
+    except Exception as e:
+        print(f"Error fetching simulation IDs: {e}")
+        return []
+    finally:
+        conn.close()

@@ -1,7 +1,7 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
-from db import initialize_database, get_simulation_full_details
+from db import *
 
 app = Flask(__name__)
 CORS(app)
@@ -96,7 +96,7 @@ def get_scene_config():
     """
     return jsonify({
         "camera": {
-            "position": [0, 100, 300],
+            "position": [200, 100, 300],
             "lookAt": [0, 50, 100]
         },
         "slope": {
@@ -115,12 +115,24 @@ def get_scene_config():
             "color": 0x808080
         },
         "drone": {
-            "startPosition": [0, 100, 0],
+            "startPosition": [40, 10, 175],
         },
         "beacon": {
             "depth": 1
         }
     }), 200
+
+@app.route('/api/simulation-ids', methods=['GET'])
+def get_simulation_ids():
+    """
+    API endpoint to fetch all available simulation IDs and descriptions.
+    """
+    try:
+        simulations = fetch_simulation_ids_and_descriptions()
+        return jsonify(simulations), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 
 if __name__ == '__main__':
     with app.app_context():

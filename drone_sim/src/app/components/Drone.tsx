@@ -1,20 +1,19 @@
 'use client';
 
 import * as THREE from 'three';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
 import { testBackend } from '../utils/api';
 
 interface DroneProps {
   scene: THREE.Scene;
-  startPosition: [number, number, number]; // Accept start position as a prop
+  startPosition: [number, number, number];
 }
 
-const Drone = ({ scene, startPosition }: DroneProps) => {
+const Drone = forwardRef(({ scene, startPosition }: DroneProps, ref) => {
   const droneRef = useRef<THREE.Mesh | null>(null);
   const speed = 1; // Movement speed
   const rotationSpeed = 0.02; // Rotation speed
 
-  // Key state for movement and rotation
   const keyState: { [key: string]: boolean } = {
     ArrowUp: false,
     ArrowDown: false,
@@ -28,92 +27,113 @@ const Drone = ({ scene, startPosition }: DroneProps) => {
   };
 
   useEffect(() => {
-    // Create the drone geometry and material
-    const droneGeometry = new THREE.BoxGeometry(5, 5, 5); // A small cube for the drone
-    const droneMaterial = new THREE.MeshStandardMaterial({ color: 0x0000ff }); // Blue color for the drone
+    const droneGeometry = new THREE.BoxGeometry(5, 5, 5);
+    const droneMaterial = new THREE.MeshStandardMaterial({ color: 0x0000ff });
     const droneMesh = new THREE.Mesh(droneGeometry, droneMaterial);
 
-    // Set the initial position based on startPosition prop
-    droneMesh.position.set(...startPosition); // Spread the startPosition array
-    droneMesh.rotation.set(0, 0, 0); // Starting rotation
+    droneMesh.position.set(...startPosition);
+    droneMesh.rotation.set(0, 0, 0);
 
-    // Add the drone to the scene
     scene.add(droneMesh);
     droneRef.current = droneMesh;
 
-    // Keydown listener
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key in keyState) {
         keyState[event.key] = true;
       }
     };
 
-    // Keyup listener
     const handleKeyUp = (event: KeyboardEvent) => {
       if (event.key in keyState) {
         keyState[event.key] = false;
+        console.log('Position:', droneRef.current?.position);
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('keyup', handleKeyUp);
 
-    // Animate drone movement
     const animateDrone = async () => {
       if (!droneRef.current) return;
 
       const position = droneRef.current.position;
       const rotation = droneRef.current.rotation;
 
-      // Handle height (Y-axis) movement (ArrowUp, ArrowDown)
-      if (keyState.ArrowUp) position.y += speed; // Move up
-      if (keyState.ArrowDown) position.y -= speed; // Move down
+      if (keyState.ArrowUp) position.y += speed;
+      if (keyState.ArrowDown) position.y -= speed;
 
-      // Handle yaw rotation (ArrowLeft, ArrowRight)
-      if (keyState.ArrowLeft) rotation.y += rotationSpeed; // Rotate left (yaw)
-      if (keyState.ArrowRight) rotation.y -= rotationSpeed; // Rotate right (yaw)
+      if (keyState.ArrowLeft) rotation.y += rotationSpeed;
+      if (keyState.ArrowRight) rotation.y -= rotationSpeed;
 
-      // Handle forward/backward movement (W, S)
       if (keyState.w) {
         position.x -= speed * Math.sin(rotation.y);
-        position.z -= speed * Math.cos(rotation.y); // Move forward in direction of rotation
+        position.z -= speed * Math.cos(rotation.y);
       }
       if (keyState.s) {
         position.x += speed * Math.sin(rotation.y);
-        position.z += speed * Math.cos(rotation.y); // Move backward in direction of rotation
+        position.z += speed * Math.cos(rotation.y);
       }
 
-      // Handle strafing movement (A, D)
       if (keyState.a) {
         position.x -= speed * Math.cos(rotation.y);
-        position.z += speed * Math.sin(rotation.y); // Strafe left
+        position.z += speed * Math.sin(rotation.y);
       }
       if (keyState.d) {
         position.x += speed * Math.cos(rotation.y);
-        position.z -= speed * Math.sin(rotation.y); // Strafe right
+        position.z -= speed * Math.sin(rotation.y);
       }
 
-      // Test backend connection when "T" is pressed
       if (keyState.t) {
         console.log('Testing backend...');
         const res = await testBackend();
         console.log(res);
       }
-
-      requestAnimationFrame(animateDrone); // Continue the animation loop
+      requestAnimationFrame(animateDrone);
     };
 
-    animateDrone(); // Start the animation
+    animateDrone();
 
     return () => {
-      // Cleanup event listeners and remove drone from the scene
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
-      if (droneRef.current) scene.remove(droneRef.current); // Remove the drone on cleanup
+      if (droneRef.current) scene.remove(droneRef.current);
     };
-  }, [scene, startPosition]); // Re-run effect if scene or startPosition changes
+  }, [scene, startPosition]);
 
-  return null; // The drone is part of the 3D scene, not rendered as JSX
-};
+  // Expose the moveDrone function and the drone's THREE.Mesh via ref
+  useImperativeHandle(ref, () => ({
+    moveDrone: (targetPosition: [number, number, number], duration: number) => {
+      if (!droneRef.current) {
+        console.error('Drone mesh is not initialized!');
+        return;
+      }
+
+      const start = droneRef.current.position.clone();
+      const target = new THREE.Vector3(...targetPosition);
+      const startTime = performance.now();
+
+      const animate = (time: number) => {
+        const elapsed = time - startTime;
+        const t = Math.min(elapsed / duration, 1); // Clamp t between 0 and 1
+
+        // Interpolate position
+        droneRef.current?.position.lerpVectors(start, target, t);
+
+        if (t < 1) {
+          requestAnimationFrame(animate);
+        } else {
+          console.log('Drone reached target position:', targetPosition);
+        }
+      };
+
+      requestAnimationFrame(animate);
+    },
+    get current() {
+      return droneRef.current;
+    },
+  }));
+
+  return null;
+});
 
 export default Drone;
